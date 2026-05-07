@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import type { ColumnFiltersState, OnChangeFn } from "@tanstack/react-table";
+import { useDebounce } from "./useDebounce";
 
 export interface TableStateConfig {
   initialPage?: number;
   initialPageSize?: number;
   initialFilters?: ColumnFiltersState;
+  initialSearch?: string;
 }
 
 export interface TableState {
@@ -15,6 +17,10 @@ export interface TableState {
   // Filter state
   columnFilters: ColumnFiltersState;
 
+  // Search state
+  searchTerm: string;
+  debouncedSearchTerm: string;
+
   // Computed values
   activeFilter: boolean | undefined;
 
@@ -22,18 +28,27 @@ export interface TableState {
   setCurrentPage: (page: number) => void;
   setPageSize: (size: number) => void;
   setColumnFilters: OnChangeFn<ColumnFiltersState>;
+  setSearchTerm: (term: string) => void;
   handlePageChange: (newPage: number) => void;
   handlePageSizeChange: (newPageSize: number) => void;
   resetToFirstPage: () => void;
 }
 
 export function useTableState(config: TableStateConfig = {}): TableState {
-  const { initialPage = 1, initialPageSize = 20, initialFilters = [] } = config;
+  const {
+    initialPage = 1,
+    initialPageSize = 20,
+    initialFilters = [],
+    initialSearch = "",
+  } = config;
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
   const [columnFilters, setColumnFilters] =
     useState<ColumnFiltersState>(initialFilters);
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Get active filter from column filters
   const activeFilter = useMemo(() => {
@@ -45,10 +60,10 @@ export function useTableState(config: TableStateConfig = {}): TableState {
     return undefined;
   }, [columnFilters]);
 
-  // Reset to first page when filters change
+  // Reset to first page when filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter]);
+  }, [activeFilter, debouncedSearchTerm]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -56,7 +71,7 @@ export function useTableState(config: TableStateConfig = {}): TableState {
 
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
-    setCurrentPage(1); // Reset to first page when changing page size
+    setCurrentPage(1);
   };
 
   const resetToFirstPage = () => {
@@ -67,10 +82,13 @@ export function useTableState(config: TableStateConfig = {}): TableState {
     currentPage,
     pageSize,
     columnFilters,
+    searchTerm,
+    debouncedSearchTerm,
     activeFilter,
     setCurrentPage,
     setPageSize,
     setColumnFilters,
+    setSearchTerm,
     handlePageChange,
     handlePageSizeChange,
     resetToFirstPage,
