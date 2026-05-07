@@ -7,6 +7,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useState } from "react";
+import { Pencil, Power } from "lucide-react";
 import type { Product } from "../../types/api";
 import { usePaginatedProducts } from "../../queries/useProducts";
 import {
@@ -18,7 +20,10 @@ import {
   TableRow,
 } from "../table";
 import { Badge } from "../badge";
+import { Button } from "../button";
 import { useTableState } from "../../hooks/useTableState";
+import { useToggleProductStatus } from "../../mutations/useProductMutations";
+import { EditProductModal } from "../edit-product/EditProductModal";
 
 declare module "@tanstack/react-table" {
   //allows us to define custom properties for our columns
@@ -28,6 +33,8 @@ declare module "@tanstack/react-table" {
 }
 
 function ProductsTable() {
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
   const {
     currentPage,
     pageSize,
@@ -43,6 +50,9 @@ function ProductsTable() {
     limit: pageSize,
     active: activeFilter,
   });
+
+  const { mutate: toggleStatus, isPending: isTogglingStatus } =
+    useToggleProductStatus();
 
   const products = data?.products || [];
 
@@ -103,6 +113,40 @@ function ProductsTable() {
         return date.toLocaleDateString();
       },
     },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: (props) => {
+        const product = props.row.original;
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Edit product"
+              onClick={() => setEditingProduct(product)}
+            >
+              <Pencil size={14} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-8 w-8 p-0 ${
+                product.active
+                  ? "text-red-500 hover:text-red-700 hover:bg-red-50"
+                  : "text-green-600 hover:text-green-800 hover:bg-green-50"
+              }`}
+              title={product.active ? "Deactivate product" : "Activate product"}
+              disabled={isTogglingStatus}
+              onClick={() => toggleStatus(product.id)}
+            >
+              <Power size={14} />
+            </Button>
+          </div>
+        );
+      },
+    },
   ];
 
   const table = useReactTable({
@@ -132,122 +176,134 @@ function ProductsTable() {
   }
 
   return (
-    <div className="p-4">
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                return (
-                  <TableHead key={header.id} colSpan={header.colSpan}>
-                    {header.isPlaceholder ? null : (
-                      <>
-                        <div
-                          {...{
-                            className: header.column.getCanSort()
-                              ? "cursor-pointer select-none"
-                              : "",
-                            onClick: header.column.getToggleSortingHandler(),
-                          }}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {{
-                            asc: " 🔼",
-                            desc: " 🔽",
-                          }[header.column.getIsSorted() as string] ?? null}
-                        </div>
-                        {header.column.getCanFilter() ? (
-                          <div className="mt-2">
-                            <Filter column={header.column} />
-                          </div>
-                        ) : null}
-                      </>
-                    )}
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.map((row) => {
-            return (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => {
+    <>
+      <div className="p-4">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
                   return (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
+                    <TableHead key={header.id} colSpan={header.colSpan}>
+                      {header.isPlaceholder ? null : (
+                        <>
+                          <div
+                            {...{
+                              className: header.column.getCanSort()
+                                ? "cursor-pointer select-none"
+                                : "",
+                              onClick: header.column.getToggleSortingHandler(),
+                            }}
+                          >
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                            {{
+                              asc: " 🔼",
+                              desc: " 🔽",
+                            }[header.column.getIsSorted() as string] ?? null}
+                          </div>
+                          {header.column.getCanFilter() ? (
+                            <div className="mt-2">
+                              <Filter column={header.column} />
+                            </div>
+                          ) : null}
+                        </>
                       )}
-                    </TableCell>
+                    </TableHead>
                   );
                 })}
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-      <div className="h-4" />
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => handlePageChange(1)}
-            disabled={!data?.pagination?.hasPreviousPage}
-          >
-            {"<<"}
-          </button>
-          <button
-            className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={!data?.pagination?.hasPreviousPage}
-          >
-            {"<"}
-          </button>
-          <button
-            className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={!data?.pagination?.hasNextPage}
-          >
-            {">"}
-          </button>
-          <button
-            className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => handlePageChange(data?.pagination?.totalPages || 1)}
-            disabled={!data?.pagination?.hasNextPage}
-          >
-            {">>"}
-          </button>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            Page {data?.pagination?.currentPage || 1} of{" "}
-            {data?.pagination?.totalPages || 1}
-          </span>
-          <select
-            value={pageSize}
-            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-            className="border rounded p-1 text-sm"
-          >
-            {[10, 20, 30, 40, 50].map((size) => (
-              <option key={size} value={size}>
-                Show {size}
-              </option>
             ))}
-          </select>
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => {
+              return (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => {
+                    return (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        <div className="h-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => handlePageChange(1)}
+              disabled={!data?.pagination?.hasPreviousPage}
+            >
+              {"<<"}
+            </button>
+            <button
+              className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={!data?.pagination?.hasPreviousPage}
+            >
+              {"<"}
+            </button>
+            <button
+              className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!data?.pagination?.hasNextPage}
+            >
+              {">"}
+            </button>
+            <button
+              className="border rounded p-1 px-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() =>
+                handlePageChange(data?.pagination?.totalPages || 1)
+              }
+              disabled={!data?.pagination?.hasNextPage}
+            >
+              {">>"}
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              Page {data?.pagination?.currentPage || 1} of{" "}
+              {data?.pagination?.totalPages || 1}
+            </span>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              className="border rounded p-1 text-sm"
+            >
+              {[10, 20, 30, 40, 50].map((size) => (
+                <option key={size} value={size}>
+                  Show {size}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="text-sm text-muted-foreground mt-2">
+          Showing {products.length} products
+          {data?.pagination && (
+            <span> of {data.pagination.totalItems} total</span>
+          )}
         </div>
       </div>
-      <div className="text-sm text-muted-foreground mt-2">
-        Showing {products.length} products
-        {data?.pagination && (
-          <span> of {data.pagination.totalItems} total</span>
-        )}
-      </div>
-    </div>
+
+      <EditProductModal
+        product={editingProduct}
+        open={editingProduct !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingProduct(null);
+        }}
+      />
+    </>
   );
 }
 

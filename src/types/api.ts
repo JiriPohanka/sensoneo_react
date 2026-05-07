@@ -54,3 +54,11 @@ export interface ProductFormData {
   companyId: number;
   registeredById: number;
 }
+
+export interface ProductUpdateData {
+  id: number;
+  name: string;
+  packaging: "pet" | "can" | "glass" | "tetra" | "other";
+  deposit: number;
+  volume: number;
+}
