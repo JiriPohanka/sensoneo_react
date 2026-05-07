@@ -70,6 +70,7 @@ interface ProductsQueryParams {
   page?: number;
   limit?: number;
   active?: boolean;
+  search?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -95,6 +96,7 @@ const fetchPaginatedProducts = async (
     searchParams.set("limit", params.limit.toString());
   if (params.active !== undefined)
     searchParams.set("active", params.active.toString());
+  if (params.search) searchParams.set("search", params.search);
   if (params.sortBy) searchParams.set("sortBy", params.sortBy);
   if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
 

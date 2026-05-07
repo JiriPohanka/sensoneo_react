@@ -24,6 +24,7 @@ import { Button } from "../button";
 import { useTableState } from "../../hooks/useTableState";
 import { useToggleProductStatus } from "../../mutations/useProductMutations";
 import { EditProductModal } from "../edit-product/EditProductModal";
+import { ProductSearchBar } from "./ProductSearchBar";
 
 declare module "@tanstack/react-table" {
   //allows us to define custom properties for our columns
@@ -40,7 +41,10 @@ function ProductsTable() {
     pageSize,
     columnFilters,
     activeFilter,
+    searchTerm,
+    debouncedSearchTerm,
     setColumnFilters,
+    setSearchTerm,
     handlePageChange,
     handlePageSizeChange,
   } = useTableState();
@@ -49,6 +53,7 @@ function ProductsTable() {
     page: currentPage,
     limit: pageSize,
     active: activeFilter,
+    search: debouncedSearchTerm || undefined,
   });
 
   const { mutate: toggleStatus, isPending: isTogglingStatus } =
@@ -177,6 +182,9 @@ function ProductsTable() {
 
   return (
     <>
+      <div className="px-4 pt-4 pb-2">
+        <ProductSearchBar value={searchTerm} onChange={setSearchTerm} />
+      </div>
       <div className="p-4">
         <Table>
           <TableHeader>
@@ -218,22 +226,31 @@ function ProductsTable() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => {
-              return (
+            {table.getRowModel().rows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  {debouncedSearchTerm
+                    ? `No products found matching "${debouncedSearchTerm}"`
+                    : "No products found"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => {
-                    return (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    );
-                  })}
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              );
-            })}
+              ))
+            )}
           </TableBody>
         </Table>
         <div className="h-4" />
