@@ -16,6 +16,9 @@ export function useAnalyticsData() {
     productsQuery.isError || companiesQuery.isError || usersQuery.isError;
   const error = productsQuery.error || companiesQuery.error || usersQuery.error;
 
+  console.warn('this is bullshit')
+
+
   const data: AnalyticsData | undefined =
     productsQuery.data &&
     companiesQuery.data !== undefined &&
